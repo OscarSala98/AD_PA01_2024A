@@ -1,4 +1,43 @@
-﻿using System.Linq;
+﻿// ******************************************************************************
+// Practica 07
+// Miguel Pastuña
+// Fecha de realizacion: 25/06/2024
+// Fecha de entrega: 26/06/2024
+// Resultados:
+// * Se implementaron las clases Pedido, Respuesta y Protocolo para manejar
+// pedidos y respuestas en un protocolo de comunicación cliente-servidor.
+// * Se incluyeron métodos para procesar pedidos, resolverlos según comandos
+// específicos y manejar un contador de solicitudes por cliente.
+// * Se validó y procesó correctamente el ingreso de usuarios y el cálculo
+// basado en placas de vehículos.
+// * Se manejaron errores de comunicación mediante el uso de excepciones de Socket.
+// * Se realizó un fork del repositorio original para trabajar de manera
+// independiente sin afectar el código base.
+// * Se creó una pull request para proponer los cambios realizados y
+// colaborar con el repositorio original.
+// Conclusiones:
+// * El diseño del protocolo permite una interacción eficiente y segura entre
+// cliente y servidor, facilitando la gestión de solicitudes y respuestas.
+// * La estructura modular del código facilita la escalabilidad y mantenimiento
+// del sistema en proyectos de comunicación más complejos.
+// * El uso de clases y métodos estáticos optimiza la gestión de datos y
+// estados durante la comunicación.
+// * El proceso de fork y pull request en GitHub es esencial para contribuir de
+// manera segura y efectiva a proyectos de código abierto, promoviendo la
+// colaboración y el control de versiones.
+// Recomendaciones:
+// * Considerar la implementación de mecanismos adicionales de seguridad
+// para fortalecer la autenticación y la integridad de los datos transmitidos.
+// * Documentar de manera detallada los métodos y clases para facilitar la
+// comprensión y mantenimiento del código por parte de otros desarrolladores.
+// * Mantener el fork sincronizado con el repositorio original para asegurar
+// que los cambios propuestos sean compatibles con las últimas actualizaciones.
+// * Seguir las pautas de contribución del proyecto original y proporcionar
+// descripciones claras y detalladas en las pull requests para facilitar la
+// revisión y aceptación de los cambios.
+// ******************************************************************************
+
+using System.Linq;
 using System.Text;
 using System.Net.Sockets;
 using System.Collections.Generic;
