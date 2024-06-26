@@ -1,191 +1,99 @@
-﻿using System;
+﻿﻿using System;
 using System.Collections.Generic;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using Protocolo;
 
 namespace Servidor
 {
-    class Servidor
+    class Program
     {
-        private static TcpListener escuchador;
-        private static Dictionary<string, int> listadoClientes
-            = new Dictionary<string, int>();
-
         static void Main(string[] args)
         {
+            TcpListener listener = null; // Servidor TCP para escuchar conexiones entrantes
             try
             {
-                escuchador = new TcpListener(IPAddress.Any, 8080);
-                escuchador.Start();
-                Console.WriteLine("Servidor inició en el puerto 5000...");
+                // Inicializar el servidor para escuchar en cualquier dirección IP y el puerto 8080
+                listener = new TcpListener(IPAddress.Any, 8080);
+                listener.Start();
+                Console.WriteLine("Servidor iniciado...");
+
+                // Diccionario para llevar el conteo de consultas por cliente
+                Dictionary<string, int> listadoClientes = new Dictionary<string, int>();
 
                 while (true)
                 {
-                    TcpClient cliente = escuchador.AcceptTcpClient();
-                    Console.WriteLine("Cliente conectado, puerto: {0}", cliente.Client.RemoteEndPoint.ToString());
-                    Thread hiloCliente = new Thread(ManipuladorCliente);
-                    hiloCliente.Start(cliente);
+                    Console.WriteLine("Esperando conexión...");
+                    TcpClient cliente = listener.AcceptTcpClient(); // Aceptar una nueva conexión
+                    Console.WriteLine("Cliente conectado: " + cliente.Client.RemoteEndPoint);
+
+                    // Iniciar un nuevo hilo para manejar al cliente
+                    System.Threading.ThreadPool.QueueUserWorkItem(HandleClient, new ClientInfo { TcpClient = cliente, ListadoClientes = listadoClientes });
                 }
             }
-            catch (SocketException ex)
+            catch (Exception ex)
             {
-                Console.WriteLine("Error de socket al iniciar el servidor: " +
-                    ex.Message);
-            }
-            finally 
-            {
-                escuchador?.Stop();
-            }
-        }
-
-        private static void ManipuladorCliente(object obj)
-        {
-            TcpClient cliente = (TcpClient)obj;
-            NetworkStream flujo = null;
-            try
-            {
-                flujo = cliente.GetStream();
-                byte[] bufferTx;
-                byte[] bufferRx = new byte[1024];
-                int bytesRx;
-
-                while ((bytesRx = flujo.Read(bufferRx, 0, bufferRx.Length)) > 0)
-                {
-                    string mensajeRx =
-                        Encoding.UTF8.GetString(bufferRx, 0, bytesRx);
-                    Pedido pedido = Pedido.Procesar(mensajeRx);
-                    Console.WriteLine("Se recibio: " + pedido);
-
-                    string direccionCliente =
-                        cliente.Client.RemoteEndPoint.ToString();
-                    Respuesta respuesta = ResolverPedido(pedido, direccionCliente);
-                    Console.WriteLine("Se envió: " + respuesta);
-
-                    bufferTx = Encoding.UTF8.GetBytes(respuesta.ToString());
-                    flujo.Write(bufferTx, 0, bufferTx.Length);
-                }
-
-            }
-            catch (SocketException ex)
-            {
-                Console.WriteLine("Error de socket al manejar el cliente: " + ex.Message);
+                Console.WriteLine("Error: " + ex.Message);
             }
             finally
             {
-                flujo?.Close();
-                cliente?.Close();
+                // Detener el servidor si ocurre algún error
+                listener?.Stop();
             }
         }
 
-        private static Respuesta ResolverPedido(Pedido pedido, string direccionCliente)
+        static void HandleClient(object clientInfo)
         {
-            Respuesta respuesta = new Respuesta
-            { Estado = "NOK", Mensaje = "Comando no reconocido" };
+            ClientInfo info = (ClientInfo)clientInfo;
+            TcpClient cliente = info.TcpClient;
+            Dictionary<string, int> listadoClientes = info.ListadoClientes;
 
-            switch (pedido.Comando)
+            string remoteEndPoint = cliente.Client.RemoteEndPoint.ToString(); // Dirección del cliente
+            try
             {
-                case "INGRESO":
-                    if (pedido.Parametros.Length == 2 &&
-                        pedido.Parametros[0] == "root" &&
-                        pedido.Parametros[1] == "admin20")
-                    {
-                        respuesta = new Random().Next(2) == 0
-                            ? new Respuesta 
-                            { Estado = "OK", 
-                                Mensaje = "ACCESO_CONCEDIDO" }
-                            : new Respuesta 
-                            { Estado = "NOK", 
-                                Mensaje = "ACCESO_NEGADO" };
-                    }
-                    else
-                    {
-                        respuesta.Mensaje = "ACCESO_NEGADO";
-                    }
-                    break;
+                using (NetworkStream stream = cliente.GetStream()) // Flujo de datos para la comunicación con el cliente
+                {
+                    byte[] bufferRx = new byte[1024]; // Buffer para recibir datos
 
-                case "CALCULO":
-                    if (pedido.Parametros.Length == 3)
+                    while (cliente.Connected) // Mientras el cliente esté conectado
                     {
-                        string modelo = pedido.Parametros[0];
-                        string marca = pedido.Parametros[1];
-                        string placa = pedido.Parametros[2];
-                        if (ValidarPlaca(placa))
+                        int bytesRx = stream.Read(bufferRx, 0, bufferRx.Length); // Leer datos del cliente
+                        if (bytesRx == 0)
                         {
-                            byte indicadorDia = ObtenerIndicadorDia(placa);
-                            respuesta = new Respuesta
-                            { Estado = "OK", 
-                                Mensaje = $"{placa} {indicadorDia}" };
-                            ContadorCliente(direccionCliente);
+                            break; // El cliente se ha desconectado
                         }
-                        else
-                        {
-                            respuesta.Mensaje = "Placa no válida";
-                        }
+
+                        string mensaje = Encoding.UTF8.GetString(bufferRx, 0, bytesRx); // Convertir los datos recibidos a cadena
+                        Console.WriteLine("Mensaje recibido: " + mensaje);
+                        Pedido pedido = Pedido.Procesar(mensaje); // Procesar el mensaje recibido
+
+                        // Resolver el pedido y obtener la respuesta
+                        Respuesta respuesta = Protocolo.Protocolo.ResolverPedido(pedido, cliente.Client.RemoteEndPoint.ToString(), ref listadoClientes);
+
+                        // Enviar la respuesta al cliente
+                        byte[] bufferTx = Encoding.UTF8.GetBytes(respuesta.ToString());
+                        stream.Write(bufferTx, 0, bufferTx.Length);
+                        Console.WriteLine("Respuesta enviada: " + respuesta.ToString());
                     }
-                    break;
-
-                case "CONTADOR":
-                    if (listadoClientes.ContainsKey(direccionCliente))
-                    {
-                        respuesta = new Respuesta
-                        { Estado = "OK",
-                            Mensaje = listadoClientes[direccionCliente].ToString() };
-                    }
-                    else
-                    {
-                        respuesta.Mensaje = "No hay solicitudes previas";
-                    }
-                    break;
+                }
             }
-
-            return respuesta;
-        }
-
-        private static bool ValidarPlaca(string placa)
-        {
-            return Regex.IsMatch(placa, @"^[A-Z]{3}[0-9]{4}$");
-        }
-
-        private static byte ObtenerIndicadorDia(string placa)
-        {
-            int ultimoDigito = int.Parse(placa.Substring(6, 1));
-            switch (ultimoDigito)
+            catch (Exception ex)
             {
-                case 1: 
-                case 2: 
-                    return 0b00100000; // Lunes
-                case 3: 
-                case 4: 
-                    return 0b00010000; // Martes
-                case 5: 
-                case 6: 
-                    return 0b00001000; // Miércoles
-                case 7: 
-                case 8: 
-                    return 0b00000100; // Jueves
-                case 9: 
-                case 0: 
-                    return 0b00000010; // Viernes
-                default: 
-                    return 0;
+                Console.WriteLine("Error en la comunicación con el cliente: " + ex.Message);
+            }
+            finally
+            {
+                // Informar la desconexión del cliente y cerrar la conexión
+                Console.WriteLine("Cliente desconectado: " + remoteEndPoint);
+                cliente.Close();
             }
         }
 
-        private static void ContadorCliente(string direccionCliente)
+        class ClientInfo
         {
-            if (listadoClientes.ContainsKey(direccionCliente))
-            {
-                listadoClientes[direccionCliente]++;
-            }
-            else
-            {
-                listadoClientes[direccionCliente] = 1;
-            }
+            public TcpClient TcpClient { get; set; } // Cliente TCP
+            public Dictionary<string, int> ListadoClientes { get; set; } // Diccionario para el conteo de consultas por cliente
         }
-
     }
 }
