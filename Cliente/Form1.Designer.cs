@@ -36,6 +36,10 @@ namespace Cliente
             this.txtPassword = new System.Windows.Forms.TextBox();
             this.txtUsuario = new System.Windows.Forms.TextBox();
             this.panPlaca = new System.Windows.Forms.Panel();
+            this.label5 = new System.Windows.Forms.Label();
+            this.txtMarca = new System.Windows.Forms.TextBox();
+            this.label4 = new System.Windows.Forms.Label();
+            this.txtModelo = new System.Windows.Forms.TextBox();
             this.chkSabado = new System.Windows.Forms.CheckBox();
             this.chkViernes = new System.Windows.Forms.CheckBox();
             this.chkJueves = new System.Windows.Forms.CheckBox();
@@ -47,10 +51,6 @@ namespace Cliente
             this.label1 = new System.Windows.Forms.Label();
             this.btnNumConsultas = new System.Windows.Forms.Button();
             this.txtPlaca = new System.Windows.Forms.TextBox();
-            this.label4 = new System.Windows.Forms.Label();
-            this.txtModelo = new System.Windows.Forms.TextBox();
-            this.label5 = new System.Windows.Forms.Label();
-            this.txtMarca = new System.Windows.Forms.TextBox();
             this.panLogin.SuspendLayout();
             this.panPlaca.SuspendLayout();
             this.SuspendLayout();
@@ -132,6 +132,38 @@ namespace Cliente
             this.panPlaca.Name = "panPlaca";
             this.panPlaca.Size = new System.Drawing.Size(480, 153);
             this.panPlaca.TabIndex = 8;
+            // 
+            // label5
+            // 
+            this.label5.AutoSize = true;
+            this.label5.Location = new System.Drawing.Point(251, 18);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(40, 13);
+            this.label5.TabIndex = 22;
+            this.label5.Text = "Marca:";
+            // 
+            // txtMarca
+            // 
+            this.txtMarca.Location = new System.Drawing.Point(320, 15);
+            this.txtMarca.Name = "txtMarca";
+            this.txtMarca.Size = new System.Drawing.Size(137, 20);
+            this.txtMarca.TabIndex = 21;
+            // 
+            // label4
+            // 
+            this.label4.AutoSize = true;
+            this.label4.Location = new System.Drawing.Point(14, 15);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(45, 13);
+            this.label4.TabIndex = 20;
+            this.label4.Text = "Modelo:";
+            // 
+            // txtModelo
+            // 
+            this.txtModelo.Location = new System.Drawing.Point(108, 12);
+            this.txtModelo.Name = "txtModelo";
+            this.txtModelo.Size = new System.Drawing.Size(135, 20);
+            this.txtModelo.TabIndex = 19;
             // 
             // chkSabado
             // 
@@ -238,38 +270,7 @@ namespace Cliente
             this.txtPlaca.Name = "txtPlaca";
             this.txtPlaca.Size = new System.Drawing.Size(135, 20);
             this.txtPlaca.TabIndex = 8;
-            // 
-            // label4
-            // 
-            this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(14, 15);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(45, 13);
-            this.label4.TabIndex = 20;
-            this.label4.Text = "Modelo:";
-            // 
-            // txtModelo
-            // 
-            this.txtModelo.Location = new System.Drawing.Point(108, 12);
-            this.txtModelo.Name = "txtModelo";
-            this.txtModelo.Size = new System.Drawing.Size(135, 20);
-            this.txtModelo.TabIndex = 19;
-            // 
-            // label5
-            // 
-            this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(251, 18);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(40, 13);
-            this.label5.TabIndex = 22;
-            this.label5.Text = "Marca:";
-            // 
-            // txtMarca
-            // 
-            this.txtMarca.Location = new System.Drawing.Point(320, 15);
-            this.txtMarca.Name = "txtMarca";
-            this.txtMarca.Size = new System.Drawing.Size(137, 20);
-            this.txtMarca.TabIndex = 21;
+            this.txtPlaca.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.mayusculas);
             // 
             // FrmValidador
             // 
