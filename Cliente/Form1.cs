@@ -1,4 +1,27 @@
-﻿using System;
+﻿// *****************************************************************************
+// Practica 07
+// BrigethT 
+// Fecha de realización: 21/06/2024
+// Fecha de entrega: 26/06/2024
+//
+//
+// Conclusiones:
+// *    Se concluye que se puede implementar los metodos ResolverPedido y HazOperacion en la parte del protocolo
+//      con el fin de optimizar el codigo en las otras clases y centralizar la parte lógica.
+//
+// *    Se tiene un mejor entendimiento de que realiza cada parte y cada método, tambien se tiene una composicìón
+//      de clases en donde hay que tener el conocimiento del uso de los namespaces
+//
+// Recomendaciones:
+// *    Es recomendable el uso de los try catchs para cada método ya que estos nos prodrian generar errores
+//
+// *    Se recomienda tambien utilizar correctamete parámetros de entradas entres funciones ya que comparte muchos 
+//      parñametros como el remoto y el fujo los cuales van a ser utilizados en todos los métodos
+//
+// *****************************************************************************
+
+
+using System;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
@@ -29,11 +52,6 @@ namespace Cliente
                 MessageBox.Show("No se puedo establecer conexión " + ex.Message,
                     "ERROR");
             }
-            finally 
-            {
-                flujo?.Close();
-                remoto?.Close();
-            }
 
             panPlaca.Enabled = false;
             chkLunes.Enabled = false;
@@ -56,13 +74,13 @@ namespace Cliente
                 return;
             }
 
-            Pedido pedido = new Pedido
+            Protocolo.Protocolo.Pedido pedido = new Protocolo.Protocolo.Pedido
             {
                 Comando = "INGRESO",
                 Parametros = new[] { usuario, contraseña }
             };
-            
-            Respuesta respuesta = HazOperacion(pedido);
+
+            Protocolo.Protocolo.Respuesta respuesta = Protocolo.Protocolo.HazOperacion(pedido, remoto, flujo);
             if (respuesta == null)
             {
                 MessageBox.Show("Hubo un error", "ERROR");
@@ -86,60 +104,20 @@ namespace Cliente
             }
         }
 
-        private Respuesta HazOperacion(Pedido pedido)
-        {
-            if(flujo == null)
-            {
-                MessageBox.Show("No hay conexión", "ERROR");
-                return null;
-            }
-            try
-            {
-                byte[] bufferTx = Encoding.UTF8.GetBytes(
-                    pedido.Comando + " " + string.Join(" ", pedido.Parametros));
-                
-                flujo.Write(bufferTx, 0, bufferTx.Length);
-
-                byte[] bufferRx = new byte[1024];
-                
-                int bytesRx = flujo.Read(bufferRx, 0, bufferRx.Length);
-                
-                string mensaje = Encoding.UTF8.GetString(bufferRx, 0, bytesRx);
-                
-                var partes = mensaje.Split(' ');
-                
-                return new Respuesta
-                {
-                    Estado = partes[0],
-                    Mensaje = string.Join(" ", partes.Skip(1).ToArray())
-                };
-            }
-            catch (SocketException ex)
-            {
-                MessageBox.Show("Error al intentar transmitir " + ex.Message,
-                    "ERROR");
-            }
-            finally 
-            {
-                flujo?.Close();
-                remoto?.Close();
-            }
-            return null;
-        }
 
         private void btnConsultar_Click(object sender, EventArgs e)
         {
             string modelo = txtModelo.Text;
             string marca = txtMarca.Text;
             string placa = txtPlaca.Text;
-            
-            Pedido pedido = new Pedido
+
+            Protocolo.Protocolo.Pedido pedido = new Protocolo.Protocolo.Pedido
             {
                 Comando = "CALCULO",
                 Parametros = new[] { modelo, marca, placa }
             };
-            
-            Respuesta respuesta = HazOperacion(pedido);
+
+            Protocolo.Protocolo.Respuesta respuesta = Protocolo.Protocolo.HazOperacion(pedido, remoto, flujo);
             if (respuesta == null)
             {
                 MessageBox.Show("Hubo un error", "ERROR");
@@ -212,14 +190,14 @@ namespace Cliente
         private void btnNumConsultas_Click(object sender, EventArgs e)
         {
             String mensaje = "hola";
-            
-            Pedido pedido = new Pedido
+
+            Protocolo.Protocolo.Pedido pedido = new Protocolo.Protocolo.Pedido
             {
                 Comando = "CONTADOR",
                 Parametros = new[] { mensaje }
             };
 
-            Respuesta respuesta = HazOperacion(pedido);
+            Protocolo.Protocolo.Respuesta respuesta = Protocolo.Protocolo.HazOperacion(pedido, remoto, flujo);
             if (respuesta == null)
             {
                 MessageBox.Show("Hubo un error", "ERROR");
