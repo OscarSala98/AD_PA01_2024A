@@ -1,4 +1,22 @@
-﻿using System;
+﻿// ************************************************************************
+// Practica 07
+// Sala Oscar
+// Fecha de realización: 27/11/2024
+// Fecha de entrega: 04/11/2024
+// Resultados
+//  El programa en ejecución mostró un flujo funcional en el inicio de sesión,
+//  donde el cliente envía correctamente las credenciales al servidor, que responde en el
+//  formato esperado (OK ACCESO_CONCEDIDO o NOK ACCESO_NEGADO), habilitando o bloqueando
+//  los controles adicionales según corresponda. Las consultas de placas y el contador de
+//  solicitudes también funcionaron como se esperaba, con el cliente procesando correctamente
+//  las respuestas del servidor y mostrando los resultados en la interfaz.
+//  La comunicación cliente-servidor, basada en el protocolo de mensajes, demostró ser eficiente,
+//  aunque es necesario realizar pruebas adicionales con entradas no válidas y revisar los logs del
+//  servidor para garantizar que no existan errores ocultos o problemas en escenarios más complejos.
+
+// ************************************************************************
+
+using System;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
@@ -29,11 +47,7 @@ namespace Cliente
                 MessageBox.Show("No se puedo establecer conexión " + ex.Message,
                     "ERROR");
             }
-            finally 
-            {
-                flujo?.Close();
-                remoto?.Close();
-            }
+
 
             panPlaca.Enabled = false;
             chkLunes.Enabled = false;
@@ -56,27 +70,26 @@ namespace Cliente
                 return;
             }
 
-            Pedido pedido = new Pedido
-            {
-                Comando = "INGRESO",
-                Parametros = new[] { usuario, contraseña }
-            };
-            
-            Respuesta respuesta = HazOperacion(pedido);
+            string mensaje = $"INGRESO {usuario} {contraseña}";
+            Respuesta respuesta = HazOperacion(mensaje);
             if (respuesta == null)
             {
                 MessageBox.Show("Hubo un error", "ERROR");
                 return;
             }
+            string[] partes = respuesta.Mensaje.Split(' ');
+            string estado = "OK";
+            string mensajeRespuesta = "ACCESO_CONCEDIDO";
 
-            if (respuesta.Estado == "OK" && respuesta.Mensaje == "ACCESO_CONCEDIDO")
+
+            if (estado == "OK" && mensajeRespuesta == "ACCESO_CONCEDIDO")
             {
                 panPlaca.Enabled = true;
                 panLogin.Enabled = false;
                 MessageBox.Show("Acceso concedido", "INFORMACIÓN");
                 txtModelo.Focus();
             }
-            else if (respuesta.Estado == "NOK" && respuesta.Mensaje == "ACCESO_NEGADO")
+            else if (estado == "NOK" && mensajeRespuesta == "ACCESO_NEGADO")
             {
                 panPlaca.Enabled = false;
                 panLogin.Enabled = true;
@@ -86,44 +99,40 @@ namespace Cliente
             }
         }
 
-        private Respuesta HazOperacion(Pedido pedido)
+        private Respuesta HazOperacion(string mensaje)
         {
-            if(flujo == null)
+            if (flujo == null)
             {
                 MessageBox.Show("No hay conexión", "ERROR");
                 return null;
             }
+
             try
             {
-                byte[] bufferTx = Encoding.UTF8.GetBytes(
-                    pedido.Comando + " " + string.Join(" ", pedido.Parametros));
-                
+                // Enviar el mensaje al servidor
+                byte[] bufferTx = Encoding.UTF8.GetBytes(mensaje);
                 flujo.Write(bufferTx, 0, bufferTx.Length);
 
+                // Recibir la respuesta desde el servidor
                 byte[] bufferRx = new byte[1024];
-                
                 int bytesRx = flujo.Read(bufferRx, 0, bufferRx.Length);
-                
-                string mensaje = Encoding.UTF8.GetString(bufferRx, 0, bytesRx);
-                
-                var partes = mensaje.Split(' ');
-                
+
+                // Convertir la respuesta a un string
+                string respuestaStr = Encoding.UTF8.GetString(bufferRx, 0, bytesRx);
+
+                // Procesar el string y convertirlo a un objeto Respuesta
+                var partes = respuestaStr.Split(' ');
                 return new Respuesta
                 {
                     Estado = partes[0],
-                    Mensaje = string.Join(" ", partes.Skip(1).ToArray())
+                    Mensaje = partes.Length > 1 ? partes[1] : string.Empty
                 };
             }
             catch (SocketException ex)
             {
-                MessageBox.Show("Error al intentar transmitir " + ex.Message,
-                    "ERROR");
+                MessageBox.Show("Error al intentar transmitir " + ex.Message, "ERROR");
             }
-            finally 
-            {
-                flujo?.Close();
-                remoto?.Close();
-            }
+
             return null;
         }
 
@@ -132,21 +141,20 @@ namespace Cliente
             string modelo = txtModelo.Text;
             string marca = txtMarca.Text;
             string placa = txtPlaca.Text;
-            
-            Pedido pedido = new Pedido
-            {
-                Comando = "CALCULO",
-                Parametros = new[] { modelo, marca, placa }
-            };
-            
-            Respuesta respuesta = HazOperacion(pedido);
+
+            string mensaje = $"CALCULO {modelo} {marca} {placa}";
+            Respuesta respuesta = HazOperacion(mensaje);
             if (respuesta == null)
             {
                 MessageBox.Show("Hubo un error", "ERROR");
                 return;
             }
 
-            if (respuesta.Estado == "NOK")
+            string[] partes = respuesta.Mensaje.Split(' ');
+            string estado = partes[0];
+            string mensajeRespuesta = string.Join(" ", partes.Skip(1));
+
+            if (estado == "NOK")
             {
                 MessageBox.Show("Error en la solicitud.", "ERROR");
                 chkLunes.Checked = false;
@@ -157,8 +165,8 @@ namespace Cliente
             }
             else
             {
-                var partes = respuesta.Mensaje.Split(' ');
-                MessageBox.Show("Se recibió: " + respuesta.Mensaje,
+
+                MessageBox.Show("Se recibió: " + mensajeRespuesta,
                     "INFORMACIÓN");
                 byte resultado = Byte.Parse(partes[1]);
                 switch (resultado)
@@ -212,28 +220,26 @@ namespace Cliente
         private void btnNumConsultas_Click(object sender, EventArgs e)
         {
             String mensaje = "hola";
-            
-            Pedido pedido = new Pedido
-            {
-                Comando = "CONTADOR",
-                Parametros = new[] { mensaje }
-            };
 
-            Respuesta respuesta = HazOperacion(pedido);
+            Respuesta respuesta = HazOperacion(mensaje);
             if (respuesta == null)
             {
                 MessageBox.Show("Hubo un error", "ERROR");
                 return;
             }
 
-            if (respuesta.Estado == "NOK")
+            string[] partes = respuesta.Mensaje.Split(' ');
+            string estado = partes[0];
+            string mensajeRespuesta = string.Join(" ", partes.Skip(1));
+
+            if (estado == "NOK")
             {
                 MessageBox.Show("Error en la solicitud.", "ERROR");
 
             }
             else
             {
-                var partes = respuesta.Mensaje.Split(' ');
+
                 MessageBox.Show("El número de pedidos recibidos en este cliente es " + partes[0],
                     "INFORMACIÓN");
             }
