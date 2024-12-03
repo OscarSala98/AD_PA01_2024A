@@ -1,4 +1,22 @@
-﻿using System;
+﻿// ************************************************************************
+// Practica 07
+// Sala Oscar
+// Fecha de realización: 27/11/2024
+// Fecha de entrega: 04/11/2024
+// Resultados
+//  El programa en ejecución mostró un flujo funcional en el inicio de sesión,
+//  donde el cliente envía correctamente las credenciales al servidor, que responde en el
+//  formato esperado (OK ACCESO_CONCEDIDO o NOK ACCESO_NEGADO), habilitando o bloqueando
+//  los controles adicionales según corresponda. Las consultas de placas y el contador de
+//  solicitudes también funcionaron como se esperaba, con el cliente procesando correctamente
+//  las respuestas del servidor y mostrando los resultados en la interfaz.
+//  La comunicación cliente-servidor, basada en el protocolo de mensajes, demostró ser eficiente,
+//  aunque es necesario realizar pruebas adicionales con entradas no válidas y revisar los logs del
+//  servidor para garantizar que no existan errores ocultos o problemas en escenarios más complejos.
+
+// ************************************************************************
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -14,6 +32,7 @@ namespace Servidor
         private static TcpListener escuchador;
         private static Dictionary<string, int> listadoClientes
             = new Dictionary<string, int>();
+        private static Protocolo.Protocolo protocolo = new Protocolo.Protocolo(); // Instancia de Protocolo
 
         static void Main(string[] args)
         {
@@ -36,7 +55,7 @@ namespace Servidor
                 Console.WriteLine("Error de socket al iniciar el servidor: " +
                     ex.Message);
             }
-            finally 
+            finally
             {
                 escuchador?.Stop();
             }
@@ -46,6 +65,7 @@ namespace Servidor
         {
             TcpClient cliente = (TcpClient)obj;
             NetworkStream flujo = null;
+
             try
             {
                 flujo = cliente.GetStream();
@@ -55,17 +75,16 @@ namespace Servidor
 
                 while ((bytesRx = flujo.Read(bufferRx, 0, bufferRx.Length)) > 0)
                 {
-                    string mensajeRx =
-                        Encoding.UTF8.GetString(bufferRx, 0, bytesRx);
-                    Pedido pedido = Pedido.Procesar(mensajeRx);
-                    Console.WriteLine("Se recibio: " + pedido);
+                    // Recibir mensaje del cliente
+                    string mensajeRx = Encoding.UTF8.GetString(bufferRx, 0, bytesRx);
+                    Console.WriteLine("Se recibió: " + mensajeRx);
 
-                    string direccionCliente =
-                        cliente.Client.RemoteEndPoint.ToString();
-                    Respuesta respuesta = ResolverPedido(pedido, direccionCliente);
+                    // Resolver el pedido utilizando Protocolo
+                    string respuesta = protocolo.ResolverPedido(mensajeRx, cliente.Client.RemoteEndPoint.ToString(), listadoClientes);
                     Console.WriteLine("Se envió: " + respuesta);
 
-                    bufferTx = Encoding.UTF8.GetBytes(respuesta.ToString());
+                    // Enviar respuesta al cliente
+                    bufferTx = Encoding.UTF8.GetBytes(respuesta);
                     flujo.Write(bufferTx, 0, bufferTx.Length);
                 }
 
@@ -93,17 +112,19 @@ namespace Servidor
                         pedido.Parametros[0] == "root" &&
                         pedido.Parametros[1] == "admin20")
                     {
-                        respuesta = new Random().Next(2) == 0
-                            ? new Respuesta 
-                            { Estado = "OK", 
-                                Mensaje = "ACCESO_CONCEDIDO" }
-                            : new Respuesta 
-                            { Estado = "NOK", 
-                                Mensaje = "ACCESO_NEGADO" };
+                        respuesta = new Respuesta
+                        {
+                            Estado = "OK",
+                            Mensaje = "ACCESO_CONCEDIDO"
+                        };
                     }
                     else
                     {
-                        respuesta.Mensaje = "ACCESO_NEGADO";
+                        respuesta = new Respuesta
+                        {
+                            Estado = "NOK",
+                            Mensaje = "ACCESO_NEGADO"
+                        };
                     }
                     break;
 
@@ -117,8 +138,10 @@ namespace Servidor
                         {
                             byte indicadorDia = ObtenerIndicadorDia(placa);
                             respuesta = new Respuesta
-                            { Estado = "OK", 
-                                Mensaje = $"{placa} {indicadorDia}" };
+                            {
+                                Estado = "OK",
+                                Mensaje = $"{placa} {indicadorDia}"
+                            };
                             ContadorCliente(direccionCliente);
                         }
                         else
@@ -132,8 +155,10 @@ namespace Servidor
                     if (listadoClientes.ContainsKey(direccionCliente))
                     {
                         respuesta = new Respuesta
-                        { Estado = "OK",
-                            Mensaje = listadoClientes[direccionCliente].ToString() };
+                        {
+                            Estado = "OK",
+                            Mensaje = listadoClientes[direccionCliente].ToString()
+                        };
                     }
                     else
                     {
@@ -155,22 +180,22 @@ namespace Servidor
             int ultimoDigito = int.Parse(placa.Substring(6, 1));
             switch (ultimoDigito)
             {
-                case 1: 
-                case 2: 
+                case 1:
+                case 2:
                     return 0b00100000; // Lunes
-                case 3: 
-                case 4: 
+                case 3:
+                case 4:
                     return 0b00010000; // Martes
-                case 5: 
-                case 6: 
+                case 5:
+                case 6:
                     return 0b00001000; // Miércoles
-                case 7: 
-                case 8: 
+                case 7:
+                case 8:
                     return 0b00000100; // Jueves
-                case 9: 
-                case 0: 
+                case 9:
+                case 0:
                     return 0b00000010; // Viernes
-                default: 
+                default:
                     return 0;
             }
         }
