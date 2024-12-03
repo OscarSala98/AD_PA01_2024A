@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using System.Net.Sockets;
 using Protocolo;
 
+
 namespace Cliente
 {
     public partial class FrmValidador : Form
@@ -21,20 +22,17 @@ namespace Cliente
         {
             try
             {
+                // Establecer la conexión con el servidor
                 remoto = new TcpClient("127.0.0.1", 8080);
                 flujo = remoto.GetStream();
             }
             catch (SocketException ex)
             {
-                MessageBox.Show("No se puedo establecer conexión " + ex.Message,
+                MessageBox.Show("No se pudo establecer conexión " + ex.Message,
                     "ERROR");
             }
-            finally 
-            {
-                flujo?.Close();
-                remoto?.Close();
-            }
 
+            // Deshabilitar los controles relacionados con la placa
             panPlaca.Enabled = false;
             chkLunes.Enabled = false;
             chkMartes.Enabled = false;
@@ -56,13 +54,14 @@ namespace Cliente
                 return;
             }
 
+            // Crear un objeto Pedido con los datos de inicio de sesión
             Pedido pedido = new Pedido
             {
                 Comando = "INGRESO",
                 Parametros = new[] { usuario, contraseña }
             };
-            
-            Respuesta respuesta = HazOperacion(pedido);
+            // Llamar al método HazOperacion de la clase Protocolo para realizar la operación de inicio de sesión
+            Respuesta respuesta = Protocolo.Protocolo.HazOperacion(pedido, flujo);
             if (respuesta == null)
             {
                 MessageBox.Show("Hubo un error", "ERROR");
@@ -71,6 +70,7 @@ namespace Cliente
 
             if (respuesta.Estado == "OK" && respuesta.Mensaje == "ACCESO_CONCEDIDO")
             {
+                // Habilitar los controles relacionados con la placa y deshabilitar los controles de inicio de sesión
                 panPlaca.Enabled = true;
                 panLogin.Enabled = false;
                 MessageBox.Show("Acceso concedido", "INFORMACIÓN");
@@ -78,6 +78,7 @@ namespace Cliente
             }
             else if (respuesta.Estado == "NOK" && respuesta.Mensaje == "ACCESO_NEGADO")
             {
+                // Deshabilitar los controles relacionados con la placa y habilitar los controles de inicio de sesión
                 panPlaca.Enabled = false;
                 panLogin.Enabled = true;
                 MessageBox.Show("No se pudo ingresar, revise credenciales",
@@ -86,65 +87,29 @@ namespace Cliente
             }
         }
 
-        private Respuesta HazOperacion(Pedido pedido)
-        {
-            if(flujo == null)
-            {
-                MessageBox.Show("No hay conexión", "ERROR");
-                return null;
-            }
-            try
-            {
-                byte[] bufferTx = Encoding.UTF8.GetBytes(
-                    pedido.Comando + " " + string.Join(" ", pedido.Parametros));
-                
-                flujo.Write(bufferTx, 0, bufferTx.Length);
-
-                byte[] bufferRx = new byte[1024];
-                
-                int bytesRx = flujo.Read(bufferRx, 0, bufferRx.Length);
-                
-                string mensaje = Encoding.UTF8.GetString(bufferRx, 0, bytesRx);
-                
-                var partes = mensaje.Split(' ');
-                
-                return new Respuesta
-                {
-                    Estado = partes[0],
-                    Mensaje = string.Join(" ", partes.Skip(1).ToArray())
-                };
-            }
-            catch (SocketException ex)
-            {
-                MessageBox.Show("Error al intentar transmitir " + ex.Message,
-                    "ERROR");
-            }
-            finally 
-            {
-                flujo?.Close();
-                remoto?.Close();
-            }
-            return null;
-        }
-
         private void btnConsultar_Click(object sender, EventArgs e)
         {
             string modelo = txtModelo.Text;
             string marca = txtMarca.Text;
             string placa = txtPlaca.Text;
-            
+
+            // Crear un objeto Pedido con los datos de consulta
             Pedido pedido = new Pedido
             {
                 Comando = "CALCULO",
                 Parametros = new[] { modelo, marca, placa }
             };
-            
-            Respuesta respuesta = HazOperacion(pedido);
+
+            // Llamar al método HazOperacion de la clase Protocolo para realizar la operación de consulta
+            Respuesta respuesta = Protocolo.Protocolo.HazOperacion(pedido, flujo);
             if (respuesta == null)
             {
                 MessageBox.Show("Hubo un error", "ERROR");
                 return;
             }
+            // este bloque de código se encarga de enviar una consulta al servidor, recibir la respuesta y
+            // mostrar los resultados en la interfaz de usuario. También se encarga de actualizar las casillas
+            // de verificación según el resultado obtenido.
 
             if (respuesta.Estado == "NOK")
             {
@@ -212,14 +177,19 @@ namespace Cliente
         private void btnNumConsultas_Click(object sender, EventArgs e)
         {
             String mensaje = "hola";
-            
+
+            // Crear un objeto Pedido con los datos de solicitud de contador
             Pedido pedido = new Pedido
             {
                 Comando = "CONTADOR",
                 Parametros = new[] { mensaje }
             };
 
-            Respuesta respuesta = HazOperacion(pedido);
+            // Llamar al método HazOperacion de la clase Protocolo para realizar la operación de solicitud de contador
+            Respuesta respuesta = Protocolo.Protocolo.HazOperacion(pedido, flujo);
+            //El if en cuestión verifica si la variable respuesta es igual a null. Si es así, muestra un mensaje de
+            //error indicando que hubo un error y luego retorna de la función. Esto se hace para manejar el caso
+            //en el que no se reciba ninguna respuesta del servidor.
             if (respuesta == null)
             {
                 MessageBox.Show("Hubo un error", "ERROR");
@@ -241,11 +211,19 @@ namespace Cliente
 
         private void FrmValidador_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (flujo != null)
-                flujo.Close();
+            // Cerrar el flujo de red y la conexión con el servidor al cerrar el formulario
+            flujo?.Close();
             if (remoto != null)
+            {
                 if (remoto.Connected)
                     remoto.Close();
+            }
+        }
+
+        private void mayusculas(object sender, KeyPressEventArgs e)
+        {
+            // Convertir el carácter ingresado a mayúsculas
+            e.KeyChar = char.ToUpper(e.KeyChar);
         }
     }
 }
